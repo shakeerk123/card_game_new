@@ -19,7 +19,8 @@ class _FlipCardGameState extends State<FlipCardGame> {
   bool _wait = false;
   Level level;
   Timer? _timer;
-  int _time = 5;
+  int _time = 0;
+  int _totalTime = 0;
   int _left = 0;
   bool _isFinished = false;
   List<String> _data = [];
@@ -46,13 +47,35 @@ class _FlipCardGameState extends State<FlipCardGame> {
     );
   }
 
-  void startTimer() {
+  void startMemoryTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       setState(() {
         _time -= 1;
         if (_time <= 0) {
           _timer?.cancel();
           _start = true;
+          startPlayTimer();
+        }
+      });
+    });
+  }
+
+  void startPlayTimer() {
+    int playTime = 10;
+    if (level == Level.Medium) {
+      playTime = 20;
+    } else if (level == Level.Hard) {
+      playTime = 30;
+    }
+
+    _time = playTime;
+    _totalTime = playTime;
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      setState(() {
+        _time -= 1;
+        if (_time <= 0) {
+          _timer?.cancel();
+          _isFinished = true;
         }
       });
     });
@@ -63,10 +86,20 @@ class _FlipCardGameState extends State<FlipCardGame> {
       _data = getSourceArray(level);
       _cardFlips = getInitialItemState(level);
       _cardStateKeys = getCardStateKeys(level);
-      _time = 5;
+
+      // Set the memory time based on the level
+      int memoryTime = 5;
+      if (level == Level.Medium) {
+        memoryTime = 8;
+      } else if (level == Level.Hard) {
+        memoryTime = 10;
+      }
+
+      _time = memoryTime;
+      _totalTime = memoryTime;
       _left = (_data.length ~/ 2);
       _isFinished = false;
-      startTimer();
+      startMemoryTimer();
     });
   }
 
@@ -84,51 +117,57 @@ class _FlipCardGameState extends State<FlipCardGame> {
 
   @override
   Widget build(BuildContext context) {
-    return _isFinished
-        ? Scaffold(
-            body: Center(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    restart();
-                  });
-                },
-                child: Container(
-                  height: 50,
-                  width: 200,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    "Replay",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
+    return Scaffold(
+      body: SafeArea(
+        child: _isFinished
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _left == 0 ? 'You Win!' : 'You Lose!',
+                      style: Theme.of(context).textTheme.headlineLarge,
                     ),
-                  ),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          restart();
+                        });
+                      },
+                      child: const Text("Play Again"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Go Back to Home"),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          )
-        : Scaffold(
-            body: SafeArea(
-              child: SingleChildScrollView(
+              )
+            : SingleChildScrollView(
                 child: Column(
                   children: <Widget>[
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: _time > 0
-                          ? Text(
-                              '$_time',
-                              style: Theme.of(context).textTheme.headlineLarge,
-                            )
-                          : Text(
-                              'Left: $_left',
-                              style: Theme.of(context).textTheme.headlineLarge,
-                            ),
+                      child: Column(
+                        children: [
+                          LinearProgressIndicator(
+                            value: (_totalTime - _time) / _totalTime,
+                            minHeight: 10,
+                          ),
+                          const SizedBox(height: 8),
+                          _time > 0
+                              ? Text(
+                                  '$_time',
+                                  style: Theme.of(context).textTheme.headlineLarge,
+                                )
+                              : Text(
+                                  'Left: $_left',
+                                  style: Theme.of(context).textTheme.headlineLarge,
+                                ),
+                        ],
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(4.0),
@@ -224,7 +263,7 @@ class _FlipCardGameState extends State<FlipCardGame> {
                   ],
                 ),
               ),
-            ),
-          );
+      ),
+    );
   }
 }
